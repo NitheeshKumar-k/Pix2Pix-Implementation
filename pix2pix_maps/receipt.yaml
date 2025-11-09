@@ -1,0 +1,47 @@
+# ================================================================
+# Pix2Pix on MAPS (Aerial <-> Map) with SpeechBrain logging
+# ================================================================
+seed: 1337
+__set_seed: !apply:speechbrain.utils.seed_everything [!ref <seed>]
+
+# Paths
+output_folder: !ref results/pix2pix_maps/<seed>
+save_folder: !ref <output_folder>/save
+samples_folder: !ref <output_folder>/samples
+train_log: !ref <output_folder>/train_log.txt
+
+# Data
+data_folder: !PLACEHOLDER   # e.g., /path/to/maps
+direction: AtoB              # A->B or B->A (maps dataset default A=map B=aerial)
+load_size: 286
+crop_size: 256
+batch_size: 16               # adjust per GPU memory
+num_workers: 4
+
+# Model / Optim
+ngf: 64                      # generator base channels
+ndf: 64                      # discriminator base channels
+n_layers_D: 3                # 70x70 PatchGAN
+lambda_L1: 100.0
+lr: 0.0002
+beta1: 0.5
+
+# Training
+number_of_epochs: 200
+precision: fp32
+
+# Losses / helpers
+bce_with_logits: !name:torch.nn.functional.binary_cross_entropy_with_logits
+
+# Logging
+train_logger: !new:speechbrain.utils.train_logger.FileTrainLogger
+    save_file: !ref <train_log>
+
+# Epoch counter & ckpt
+epoch_counter: !new:speechbrain.utils.epoch_loop.EpochCounter
+    limit: !ref <number_of_epochs>
+
+checkpointer: !new:speechbrain.utils.checkpoints.Checkpointer
+    checkpoints_dir: !ref <save_folder>
+    recoverables:
+        counter: !ref <epoch_counter>
