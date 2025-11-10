@@ -1,29 +1,27 @@
 #!/bin/bash
-#SBATCH --time=24:00:00
-#SBATCH --account=rrg-ravanelm
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=64G
+#SBATCH --job-name=maps-pix2pix
+#SBATCH --time=24:0:0
+#SBATCH --account=def-ravanelm
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=12G
 #SBATCH --ntasks=1
-#SBATCH --gpus=nvidia_h100_80gb_hbm3_3g.40gb:1
+#SBATCH --gres=gpu:1
 #SBATCH --nodes=1
-#SBATCH --mail-type=BEGIN,FAIL,END
+#SBATCH --mail-type=ALL
 #SBATCH --mail-user=lihaoyuwilson@gmail.com
-#SBATCH -o %x-%j.out
-#SBATCH -e %x-%j.err
-
+#SBATCH --output=logs/%x-%j.out
 set -x
 set -euo pipefail
 
 # ------------------- CONFIG -------------------
 # Path to your tar archive of the maps dataset
-MAPS_TAR="$HOME/links/projects/def-ravanelm/datasets/maps.tar.gz"
+MAPS_TAR="$HOME/projects/def-ravanelm/datasets/maps.tar.gz"
 
 # Path to your pix2pix code folder (train.py + receipt.yaml)
-CODE_DIR="/home/lihaoyu/pix2pix_maps"
+CODE_DIR="/home/lihaoyu/Pix2Pix-Implementation/pix2pix_maps"
 
 # Output directory for logs/checkpoints/samples
-OUT_ROOT="$HOME/lihaoyu/links/scratch/pix2pix/maps_unet_patchgan_run1"
-/home/lihaoyu/links/scratch
+OUT_ROOT="/home/lihaoyu/scratch/results/pix2pix/job_${SLURM_JOB_ID}"
 # ----------------------------------------------
 
 # Activate Python environment

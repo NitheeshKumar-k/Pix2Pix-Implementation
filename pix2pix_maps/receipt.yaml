@@ -1,47 +1,57 @@
 # ================================================================
-# Pix2Pix on MAPS (Aerial <-> Map) with SpeechBrain logging
+# Pix2Pix on MAPS (Aerial ↔ Map) — SpeechBrain training recipe
+# Implements: conditional GAN (U-Net + PatchGAN) from Isola et al. (2017)
 # ================================================================
+
+# ----------------- Reproducibility -----------------
 seed: 1337
 __set_seed: !apply:speechbrain.utils.seed_everything [!ref <seed>]
 
-# Paths
+# ----------------- Paths -----------------
 output_folder: !ref results/pix2pix_maps/<seed>
 save_folder: !ref <output_folder>/save
 samples_folder: !ref <output_folder>/samples
 train_log: !ref <output_folder>/train_log.txt
 
-# Data
-data_folder: !PLACEHOLDER   # e.g., /path/to/maps
-direction: AtoB              # A->B or B->A (maps dataset default A=map B=aerial)
-load_size: 286
-crop_size: 256
-batch_size: 16               # adjust per GPU memory
+# ----------------- Dataset -----------------
+data_folder: !PLACEHOLDER          # path to maps dataset root
+direction: AtoB                    # pix2pix: default maps direction (map→aerial)
+load_size: 286                     # pix2pix: resize to 286 (data jitter)
+crop_size: 256                     # pix2pix: random crop to 256
+batch_size: 16                     # tune based on GPU memory
 num_workers: 4
 
-# Model / Optim
-ngf: 64                      # generator base channels
-ndf: 64                      # discriminator base channels
-n_layers_D: 3                # 70x70 PatchGAN
-lambda_L1: 100.0
-lr: 0.0002
-beta1: 0.5
+# ----------------- Model -----------------
+ngf: 64                            # pix2pix: generator base channels (U-Net)
+ndf: 64                            # pix2pix: discriminator base channels (PatchGAN)
+n_layers_D: 3                      # pix2pix: 70×70 PatchGAN receptive field
+lambda_L1: 100.0                   # pix2pix: Eq.(1) L1 weighting factor λ=100
 
-# Training
-number_of_epochs: 200
-precision: fp32
+# ----------------- Optimization -----------------
+lr: 0.0002                         # pix2pix: Adam lr=2e-4
+beta1: 0.5                         # pix2pix: Adam β1=0.5 (β2 fixed to 0.999)
+# β2=0.999 is hardcoded in train.py, as per original paper
+# Linear LR decay after 100 epochs handled via scheduler in train.py
 
-# Losses / helpers
+# ----------------- Training -----------------
+number_of_epochs: 200              # pix2pix: 100 constant + 100 linear decay
+precision: fp32                    # can set to fp16 for AMP if desired
+
+# ----------------- Loss Functions -----------------
 bce_with_logits: !name:torch.nn.functional.binary_cross_entropy_with_logits
+# pix2pix: BCEWithLogits used for GAN losses (logistic GAN formulation)
 
-# Logging
+# ----------------- Logging -----------------
 train_logger: !new:speechbrain.utils.train_logger.FileTrainLogger
-    save_file: !ref <train_log>
+    save_file: !ref <train_log>    # logs epoch, losses, GAN/L1 metrics
 
-# Epoch counter & ckpt
+# ----------------- Epoch Counter -----------------
 epoch_counter: !new:speechbrain.utils.epoch_loop.EpochCounter
     limit: !ref <number_of_epochs>
 
+# ----------------- Checkpointing -----------------
 checkpointer: !new:speechbrain.utils.checkpoints.Checkpointer
     checkpoints_dir: !ref <save_folder>
     recoverables:
         counter: !ref <epoch_counter>
+# pix2pix: best checkpoints kept by lowest validation L1 (proxy for fidelity)
